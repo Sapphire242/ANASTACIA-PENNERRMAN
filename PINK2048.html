@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2048 - Pink Theme</title>
+<style>
+  body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #ffb6c1, #ffc0cb);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    color: #fff;
+  }
+
+  .game-container {
+    background: rgba(255, 182, 193, 0.2);
+    padding: 20px;
+    border-radius: 20px;
+    text-align: center;
+    box-shadow: 0 10px 20px rgba(255,182,193,0.5);
+  }
+
+  h1 {
+    margin: 0 0 10px;
+    font-size: 36px;
+    color: #fff;
+    text-shadow: 1px 1px 5px #ff69b4;
+  }
+
+  #score {
+    font-size: 18px;
+    margin-bottom: 15px;
+    color: #fff;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 80px);
+    grid-template-rows: repeat(4, 80px);
+    gap: 10px;
+    background: rgba(255, 182, 193, 0.1);
+    padding: 10px;
+    border-radius: 15px;
+  }
+
+  .cell {
+    width: 80px;
+    height: 80px;
+    background: rgba(255, 192, 203, 0.4);
+    border-radius: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    font-size: 24px;
+    color: #fff;
+    transition: background 0.3s, transform 0.2s;
+  }
+
+  .cell[data-value="2"] { background: #ffc0cb; color: #fff; }
+  .cell[data-value="4"] { background: #ffb6c1; color: #fff; }
+  .cell[data-value="8"] { background: #ff69b4; color: #fff; }
+  .cell[data-value="16"] { background: #ff1493; color: #fff; }
+  .cell[data-value="32"] { background: #db7093; color: #fff; }
+  .cell[data-value="64"] { background: #c71585; color: #fff; }
+  .cell[data-value="128"] { background: #ff69b4; color: #fff; font-size: 20px;}
+  .cell[data-value="256"] { background: #ff1493; color: #fff; font-size: 20px;}
+  .cell[data-value="512"] { background: #db7093; color: #fff; font-size: 18px;}
+  .cell[data-value="1024"] { background: #c71585; color: #fff; font-size: 16px;}
+  .cell[data-value="2048"] { background: #ff69b4; color: #fff; font-size: 16px; font-weight: 900; }
+
+  button {
+    margin-top: 15px;
+    padding: 10px 20px;
+    font-size: 16px;
+    background: #ff69b4;
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    cursor: pointer;
+    box-shadow: 0 5px 10px rgba(255,105,180,0.4);
+  }
+
+  button:hover {
+    background: #ff1493;
+  }
+
+  .message {
+    margin-top: 10px;
+    font-size: 18px;
+    color: #fff;
+  }
+</style>
+</head>
+<body>
+
+<div class="game-container">
+  <h1>2048</h1>
+  <div id="score">Score: 0</div>
+  <div class="grid" id="grid"></div>
+  <button id="restart">Restart</button>
+  <div class="message" id="message"></div>
+</div>
+
+<script>
+const gridSize = 4;
+let grid = [];
+let score = 0;
+const gridElement = document.getElementById('grid');
+const scoreElement = document.getElementById('score');
+const messageElement = document.getElementById('message');
+
+function initGrid() {
+  grid = Array.from({length: gridSize}, () => Array(gridSize).fill(0));
+  addRandomTile();
+  addRandomTile();
+  updateGrid();
+  score = 0;
+  scoreElement.textContent = "Score: " + score;
+  messageElement.textContent = "";
+}
+
+function addRandomTile() {
+  const empty = [];
+  for (let r = 0; r < gridSize; r++) {
+    for (let c = 0; c < gridSize; c++) {
+      if (grid[r][c] === 0) empty.push([r,c]);
+    }
+  }
+  if (empty.length === 0) return;
+  const [r,c] = empty[Math.floor(Math.random() * empty.length)];
+  grid[r][c] = Math.random() < 0.9 ? 2 : 4;
+}
+
+function updateGrid() {
+  gridElement.innerHTML = '';
+  for (let r = 0; r < gridSize; r++) {
+    for (let c = 0; c < gridSize; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.dataset.value = grid[r][c];
+      cell.textContent = grid[r][c] === 0 ? '' : grid[r][c];
+      gridElement.appendChild(cell);
+    }
+  }
+}
+
+function slide(row) {
+  let arr = row.filter(val => val);
+  for (let i = 0; i < arr.length-1; i++) {
+    if (arr[i] === arr[i+1]) {
+      arr[i] *= 2;
+      score += arr[i];
+      arr[i+1] = 0;
+    }
+  }
+  arr = arr.filter(val => val);
+  while(arr.length < gridSize) arr.push(0);
+  return arr;
+}
+
+function move(dir) {
+  let moved = false;
+  if(dir === 'left') {
+    for(let r=0;r<gridSize;r++) {
+      const newRow = slide(grid[r]);
+      if (!arraysEqual(newRow, grid[r])) { moved = true; grid[r] = newRow; }
+    }
+  } else if(dir === 'right') {
+    for(let r=0;r<gridSize;r++) {
+      const newRow = slide(grid[r].slice().reverse()).reverse();
+      if (!arraysEqual(newRow, grid[r])) { moved = true; grid[r] = newRow; }
+    }
+  } else if(dir === 'up') {
+    for(let c=0;c<gridSize;c++) {
+      let col = [];
+      for(let r=0;r<gridSize;r++) col.push(grid[r][c]);
+      const newCol = slide(col);
+      for(let r=0;r<gridSize;r++) {
+        if(grid[r][c] !== newCol[r]) moved = true;
+        grid[r][c] = newCol[r];
+      }
+    }
+  } else if(dir === 'down') {
+    for(let c=0;c<gridSize;c++) {
+      let col = [];
+      for(let r=0;r<gridSize;r++) col.push(grid[r][c]);
+      const newCol = slide(col.reverse()).reverse();
+      for(let r=0;r<gridSize;r++) {
+        if(grid[r][c] !== newCol[r]) moved = true;
+        grid[r][c] = newCol[r];
+      }
+    }
+  }
+  if(moved) {
+    addRandomTile();
+    updateGrid();
+    scoreElement.textContent = "Score: " + score;
+    if(checkWin()) messageElement.textContent = "🎉 You reached 2048!";
+    else if(checkLose()) messageElement.textContent = "💔 Game Over!";
+  }
+}
+
+function arraysEqual(a,b) {
+  return a.every((v,i) => v === b[i]);
+}
+
+function checkWin() {
+  return grid.flat().includes(2048);
+}
+
+function checkLose() {
+  if(grid.flat().includes(0)) return false;
+  // check moves
+  for(let r=0;r<gridSize;r++){
+    for(let c=0;c<gridSize;c++){
+      const val = grid[r][c];
+      if(c<gridSize-1 && val===grid[r][c+1]) return false;
+      if(r<gridSize-1 && val===grid[r+1][c]) return false;
+    }
+  }
+  return true;
+}
+
+document.addEventListener('keydown', e => {
+  switch(e.key){
+    case 'ArrowUp': move('up'); break;
+    case 'ArrowDown': move('down'); break;
+    case 'ArrowLeft': move('left'); break;
+    case 'ArrowRight': move('right'); break;
+  }
+});
+
+document.getElementById('restart').onclick = initGrid;
+
+initGrid();
+</script>
+
+</body>
+</html>
