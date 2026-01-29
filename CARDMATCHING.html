@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Pink Card Match 💕</title>
+<style>
+body {
+  font-family: "Comic Sans MS", cursive;
+  background: linear-gradient(135deg, #ffb6c1, #ffc0cb);
+  text-align: center;
+  color: #fff;
+}
+h1 { margin-top: 20px; }
+.game-board {
+  display: grid;
+  gap: 15px;
+  justify-content: center;
+  margin: 30px auto;
+}
+.card {
+  width: 90px;
+  height: 90px;
+  background: #ff69b4;
+  border-radius: 15px;
+  font-size: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.3s, background 0.3s;
+}
+.card.flipped { background: #fff; color: #ff1493; transform: rotateY(180deg); }
+.card.matched { background: #ff85c1; cursor: default; }
+button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 20px;
+  background: #ff1493;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  margin: 5px;
+}
+</style>
+</head>
+<body>
+
+<h1>💖 Pink Card Match 💖</h1>
+<div class="game-board" id="gameBoard"></div>
+<p id="message"></p>
+<button onclick="resetGame()">Restart</button>
+<button onclick="toggleSound()" id="soundBtn">🔊 Sound On</button>
+
+<script>
+const allIcons = ["💖","🌸","🎀","🍓","🩷","✨","🌷","🍰","🦄","🧸"];
+let level = 1;
+let icons = allIcons.slice(0, level + 2); // start with 3 pairs
+let cards = [...icons, ...icons];
+
+let firstCard = null;
+let secondCard = null;
+let lockBoard = true;
+let matches = 0;
+let soundOn = true;
+
+const board = document.getElementById("gameBoard");
+const message = document.getElementById("message");
+const soundBtn = document.getElementById("soundBtn");
+
+/* ===== Web Audio Sounds ===== */
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playTone(freq, duration=0.2) {
+  if(!soundOn) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.frequency.value = freq; osc.type="sine";
+  osc.start(); gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+  osc.stop(audioCtx.currentTime + duration);
+}
+function playFlip(){ playTone(600,0.1); }
+function playMatch(){ playTone(900,0.2); }
+function playWin(){ playTone(1200,0.4); }
+
+/* ===== Board Functions ===== */
+function shuffle(array){ return array.sort(()=>Math.random()-0.5); }
+
+function createBoard(){
+  board.innerHTML="";
+  matches=0;
+  lockBoard=true;
+  message.textContent="👀 Memorize the cards!";
+  cards = [...icons, ...icons];
+  shuffle(cards);
+  board.style.gridTemplateColumns=`repeat(${Math.min(8, cards.length/2)}, 90px)`;
+
+  cards.forEach(icon=>{
+    const card=document.createElement("div");
+    card.classList.add("card","flipped");
+    card.dataset.icon=icon;
+    card.textContent=icon;
+    card.addEventListener("click", flipCard);
+    board.appendChild(card);
+  });
+
+  setTimeout(()=>{
+    document.querySelectorAll(".card").forEach(c=>{
+      c.classList.remove("flipped");
+      c.textContent="";
+    });
+    message.textContent="🎮 Go!";
+    lockBoard=false;
+  }, 3000);
+}
+
+function flipCard(){
+  if(lockBoard || this===firstCard || this.classList.contains("matched")) return;
+  playFlip();
+  this.classList.add("flipped");
+  this.textContent=this.dataset.icon;
+  if(!firstCard){ firstCard=this; return; }
+  secondCard=this;
+  checkMatch();
+}
+
+function checkMatch(){
+  if(firstCard.dataset.icon===secondCard.dataset.icon){
+    playMatch();
+    firstCard.classList.add("matched");
+    secondCard.classList.add("matched");
+    matches++;
+    resetTurn();
+    if(matches===icons.length){
+      playWin();
+      message.textContent=`🎉 Level ${level} Complete!`;
+      setTimeout(nextLevel,1000);
+    }
+  } else {
+    lockBoard=true;
+    setTimeout(()=>{
+      firstCard.classList.remove("flipped");
+      secondCard.classList.remove("flipped");
+      firstCard.textContent="";
+      secondCard.textContent="";
+      resetTurn();
+    },800);
+  }
+}
+
+function resetTurn(){ [firstCard, secondCard]=[null,null]; lockBoard=false; }
+
+function nextLevel(){
+  level++;
+  icons = allIcons.slice(0, Math.min(allIcons.length, level + 2));
+  createBoard();
+}
+
+function resetGame(){
+  level=1;
+  icons = allIcons.slice(0, level + 2);
+  createBoard();
+}
+
+function toggleSound(){
+  soundOn=!soundOn;
+  soundBtn.textContent = soundOn ? "🔊 Sound On":"🔇 Sound Off";
+}
+
+/* ===== Start Game ===== */
+createBoard();
+</script>
+
+</body>
+</html>

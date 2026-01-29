@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Light Circuit Puzzle</title>
+<style>
+    body {
+        margin: 0;
+        background: #0f1220;
+        color: #fff;
+        font-family: Arial, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    h1 {
+        margin: 15px 0 5px;
+    }
+
+    #game {
+        display: grid;
+        grid-template-columns: repeat(5, 80px);
+        gap: 6px;
+        margin-top: 20px;
+    }
+
+    .tile {
+        width: 80px;
+        height: 80px;
+        background: #222;
+        border-radius: 10px;
+        cursor: pointer;
+        position: relative;
+        transition: transform 0.15s;
+    }
+
+    .tile:hover {
+        transform: scale(1.05);
+    }
+
+    .line {
+        position: absolute;
+        background: #555;
+    }
+
+    .on .line {
+        background: #00ffd5;
+        box-shadow: 0 0 10px #00ffd5;
+    }
+
+    .up { width: 6px; height: 40px; top: 0; left: 37px; }
+    .down { width: 6px; height: 40px; bottom: 0; left: 37px; }
+    .left { height: 6px; width: 40px; left: 0; top: 37px; }
+    .right { height: 6px; width: 40px; right: 0; top: 37px; }
+
+    .source {
+        background: #003344;
+        border: 2px solid #00ffd5;
+    }
+
+    #status {
+        margin-top: 15px;
+        font-size: 18px;
+    }
+
+    button {
+        margin-top: 10px;
+        padding: 8px 14px;
+        font-size: 16px;
+        cursor: pointer;
+    }
+</style>
+</head>
+<body>
+
+<h1>🔌 Light Circuit</h1>
+<p>Rotate tiles to connect the energy to all nodes</p>
+
+<div id="game"></div>
+<div id="status"></div>
+<button onclick="newGame()">New Puzzle</button>
+
+<script>
+const SIZE = 5;
+const game = document.getElementById("game");
+const statusText = document.getElementById("status");
+
+let grid = [];
+
+// Each tile stores connections: [up, right, down, left]
+function randomTile() {
+    let connections;
+    do {
+        connections = [
+            Math.random() > 0.5,
+            Math.random() > 0.5,
+            Math.random() > 0.5,
+            Math.random() > 0.5
+        ];
+    } while (connections.filter(Boolean).length === 0);
+    return connections;
+}
+
+function rotate(tile) {
+    tile.unshift(tile.pop());
+}
+
+function newGame() {
+    game.innerHTML = "";
+    grid = [];
+
+    for (let i = 0; i < SIZE * SIZE; i++) {
+        grid.push(randomTile());
+    }
+
+    // Power source at top-left
+    grid[0] = [false, true, true, false];
+
+    render();
+    updatePower();
+}
+
+function render() {
+    game.innerHTML = "";
+
+    grid.forEach((tile, index) => {
+        const div = document.createElement("div");
+        div.className = "tile";
+        if (index === 0) div.classList.add("source");
+
+        tile.forEach((on, i) => {
+            if (on) {
+                const line = document.createElement("div");
+                line.className = "line " + ["up","right","down","left"][i];
+                div.appendChild(line);
+            }
+        });
+
+        div.onclick = () => {
+            if (index !== 0) {
+                rotate(tile);
+                render();
+                updatePower();
+            }
+        };
+
+        game.appendChild(div);
+    });
+}
+
+function updatePower() {
+    const powered = new Set();
+    function dfs(i) {
+        if (powered.has(i)) return;
+        powered.add(i);
+
+        const x = i % SIZE;
+        const y = Math.floor(i / SIZE);
+        const t = grid[i];
+
+        if (t[0] && y > 0 && grid[i - SIZE][2]) dfs(i - SIZE);
+        if (t[1] && x < SIZE - 1 && grid[i + 1][3]) dfs(i + 1);
+        if (t[2] && y < SIZE - 1 && grid[i + SIZE][0]) dfs(i + SIZE);
+        if (t[3] && x > 0 && grid[i - 1][1]) dfs(i - 1);
+    }
+
+    dfs(0);
+
+    [...game.children].forEach((tile, i) => {
+        tile.classList.toggle("on", powered.has(i));
+    });
+
+    if (powered.size === grid.length) {
+        statusText.textContent = "🎉 Puzzle Solved!";
+    } else {
+        statusText.textContent = `Powered: ${powered.size}/${grid.length}`;
+    }
+}
+
+newGame();
+</script>
+
+</body>
+</html>

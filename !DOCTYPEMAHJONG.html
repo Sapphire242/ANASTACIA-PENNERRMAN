@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pink Mahjong</title>
+<style>
+  body {
+    background-color: #ffe6f0;
+    font-family: Arial, sans-serif;
+    text-align: center;
+    margin: 0;
+    padding: 0;
+  }
+
+  h1 {
+    color: #ff3399;
+    margin: 20px 0;
+  }
+
+  #gameArea {
+    display: grid;
+    grid-template-columns: repeat(8, 60px);
+    grid-gap: 10px;
+    justify-content: center;
+    margin: 20px auto;
+  }
+
+  .tile {
+    width: 60px;
+    height: 60px;
+    background-color: #ffb3d9;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    cursor: pointer;
+    transition: transform 0.2s;
+    user-select: none;
+  }
+
+  .tile.selected {
+    transform: scale(1.2);
+    border: 2px solid #ff3399;
+  }
+
+  #message {
+    font-size: 22px;
+    color: #ff3399;
+    margin-top: 10px;
+  }
+
+  button {
+    background-color: #ff3399;
+    border: none;
+    padding: 10px 20px;
+    margin: 5px;
+    border-radius: 5px;
+    font-size: 16px;
+    color: #fff;
+    cursor: pointer;
+  }
+
+  button:hover {
+    background-color: #ff66b3;
+  }
+</style>
+</head>
+<body>
+
+<h1>Pink Mahjong</h1>
+<button onclick="newGame()">New Game</button>
+<div id="gameArea"></div>
+<div id="message"></div>
+
+<script>
+const gameArea = document.getElementById('gameArea');
+const messageDisplay = document.getElementById('message');
+
+let tiles = [];
+let selectedTile = null;
+
+// Symbols (can be emojis)
+const symbols = ['🐱','🐶','🐰','🦊','🐼','🐵','🦄','🐙'];
+
+// Duplicate symbols to have pairs
+function createTiles() {
+  tiles = [];
+  let temp = [...symbols, ...symbols]; // 16 tiles for simplicity
+  temp = temp.concat(temp); // total 32 tiles for a 4x8 grid
+  shuffle(temp);
+  temp.forEach((sym,i)=>{
+    tiles.push({id:i,symbol:sym,removed:false});
+  });
+}
+
+// Shuffle array
+function shuffle(array){
+  for(let i=array.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [array[i], array[j]]=[array[j], array[i]];
+  }
+  return array;
+}
+
+// Render tiles
+function renderTiles(){
+  gameArea.innerHTML='';
+  tiles.forEach(tile=>{
+    if(tile.removed) return;
+    const el = document.createElement('div');
+    el.className='tile';
+    el.textContent = tile.symbol;
+    el.onclick = ()=>selectTile(tile,el);
+    gameArea.appendChild(el);
+  });
+}
+
+// Handle tile selection
+function selectTile(tile,el){
+  if(selectedTile && selectedTile.id===tile.id) return; // same tile
+  if(!selectedTile){
+    selectedTile = {tile,el};
+    el.classList.add('selected');
+  } else {
+    // Check match
+    if(selectedTile.tile.symbol === tile.symbol){
+      // Remove both tiles
+      selectedTile.tile.removed = true;
+      tile.removed = true;
+      renderTiles();
+      selectedTile = null;
+      checkWin();
+    } else {
+      // Not a match
+      selectedTile.el.classList.remove('selected');
+      selectedTile = {tile,el};
+      el.classList.add('selected');
+    }
+  }
+}
+
+// Check win
+function checkWin(){
+  if(tiles.every(t=>t.removed)){
+    messageDisplay.textContent = '🎉 You Won! 🎉';
+  } else {
+    messageDisplay.textContent = '';
+  }
+}
+
+// Start new game
+function newGame(){
+  messageDisplay.textContent='';
+  createTiles();
+  renderTiles();
+}
+
+newGame();
+</script>
+
+</body>
+</html>

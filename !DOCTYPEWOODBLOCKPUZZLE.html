@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wood Block Puzzle</title>
+<style>
+  body {
+    background-color: #ffe6f0;
+    font-family: Arial, sans-serif;
+    text-align: center;
+    margin: 0;
+    padding: 0;
+  }
+
+  h1 {
+    color: #8b4513; /* wood brown */
+    margin: 20px 0;
+  }
+
+  #controls {
+    margin: 10px 0;
+  }
+
+  button {
+    background-color: #ffb3d9;
+    border: none;
+    padding: 10px 20px;
+    margin: 5px;
+    border-radius: 5px;
+    font-size: 16px;
+    color: #fff;
+    cursor: pointer;
+  }
+
+  button:hover {
+    background-color: #ff66b3;
+  }
+
+  #gameArea {
+    display: inline-block;
+    margin: 20px;
+  }
+
+  .board {
+    display: grid;
+    grid-template-columns: repeat(10, 40px);
+    grid-template-rows: repeat(10, 40px);
+    gap: 2px;
+    background-color: #deb887; /* wood board */
+    padding: 5px;
+    border-radius: 10px;
+  }
+
+  .cell {
+    width: 40px;
+    height: 40px;
+    background-color: #ffe4c4;
+    border: 1px solid #d2b48c;
+  }
+
+  #pieces {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .piece {
+    display: inline-grid;
+    gap: 2px;
+    margin: 10px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .block {
+    width: 40px;
+    height: 40px;
+    background-color: #ffb3d9;
+    border-radius: 5px;
+    border: 1px solid #ff3399;
+  }
+
+  #message {
+    font-size: 22px;
+    color: #ff3399;
+    margin-top: 10px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Wood Block Puzzle</h1>
+<div id="controls">
+  <button onclick="newGame()">New Game</button>
+</div>
+<div id="gameArea">
+  <div class="board" id="board"></div>
+  <div id="pieces"></div>
+</div>
+<div id="message"></div>
+
+<script>
+const boardSize = 10;
+let board = [];
+let pieces = [];
+let score = 0;
+
+const boardDiv = document.getElementById('board');
+const piecesDiv = document.getElementById('pieces');
+const messageDisplay = document.getElementById('message');
+
+// Create empty board
+function createBoard(){
+  board = [];
+  boardDiv.innerHTML='';
+  for(let r=0;r<boardSize;r++){
+    board[r]=[];
+    for(let c=0;c<boardSize;c++){
+      board[r][c]=0;
+      const cell = document.createElement('div');
+      cell.className='cell';
+      cell.dataset.row=r;
+      cell.dataset.col=c;
+      boardDiv.appendChild(cell);
+    }
+  }
+}
+
+// Piece shapes
+const shapes = [
+  [[1]], // 1x1
+  [[1,1]], // 1x2
+  [[1],[1]], // 2x1
+  [[1,1,1]], // 1x3
+  [[1],[1],[1]], // 3x1
+  [[1,1],[1,0]], // L-shape
+  [[1,1],[0,1]], // reverse L
+  [[1,1],[1,1]] // 2x2
+];
+
+// Generate random pieces
+function generatePieces(){
+  pieces = [];
+  piecesDiv.innerHTML='';
+  for(let i=0;i<3;i++){
+    const shape = shapes[Math.floor(Math.random()*shapes.length)];
+    const piece = {shape:shape,el:null};
+    pieces.push(piece);
+    renderPiece(piece);
+  }
+}
+
+// Render a piece
+function renderPiece(piece){
+  const rows = piece.shape.length;
+  const cols = piece.shape[0].length;
+  const pieceDiv = document.createElement('div');
+  pieceDiv.className='piece';
+  pieceDiv.dataset.index=pieces.indexOf(piece);
+  pieceDiv.style.gridTemplateRows = `repeat(${rows},40px)`;
+  pieceDiv.style.gridTemplateColumns = `repeat(${cols},40px)`;
+  piece.shape.forEach((row,r)=>{
+    row.forEach((cell,c)=>{
+      if(cell){
+        const block = document.createElement('div');
+        block.className='block';
+        pieceDiv.appendChild(block);
+      } else {
+        const block = document.createElement('div');
+        block.style.width='40px';
+        block.style.height='40px';
+        pieceDiv.appendChild(block);
+      }
+    });
+  });
+  pieceDiv.onclick = ()=>selectPiece(piece);
+  piecesDiv.appendChild(pieceDiv);
+  piece.el=pieceDiv;
+}
+
+// Select piece to place
+let selectedPiece=null;
+function selectPiece(piece){
+  selectedPiece=piece;
+  messageDisplay.textContent='Click on the board to place the piece';
+}
+
+// Place piece on board
+boardDiv.onclick = function(e){
+  if(!selectedPiece) return;
+  const target = e.target;
+  if(!target.classList.contains('cell')) return;
+  const row = parseInt(target.dataset.row);
+  const col = parseInt(target.dataset.col);
+  if(canPlace(selectedPiece,row,col)){
+    placePiece(selectedPiece,row,col);
+    selectedPiece.el.remove();
+    selectedPiece=null;
+    clearLines();
+    generatePiecesIfEmpty();
+    checkGameOver();
+  }
+}
+
+// Check if piece can be placed
+function canPlace(piece,r,c){
+  for(let i=0;i<piece.shape.length;i++){
+    for(let j=0;j<piece.shape[i].length;j++){
+      if(piece.shape[i][j]){
+        let rr=r+i;
+        let cc=c+j;
+        if(rr>=boardSize || cc>=boardSize) return false;
+        if(board[rr][cc]) return false;
+      }
+    }
+  }
+  return true;
+}
+
+// Place piece
+function placePiece(piece,r,c){
+  for(let i=0;i<piece.shape.length;i++){
+    for(let j=0;j<piece.shape[i].length;j++){
+      if(piece.shape[i][j]){
+        board[r+i][c+j]=1;
+        const cellDiv = boardDiv.children[(r+i)*boardSize+(c+j)];
+        cellDiv.style.backgroundColor='#ffb3d9';
+      }
+    }
+  }
+}
+
+// Clear full rows/columns
+function clearLines(){
+  // Rows
+  for(let r=0;r<boardSize;r++){
+    if(board[r].every(c=>c===1)){
+      for(let c=0;c<boardSize;c++){
+        board[r][c]=0;
+        boardDiv.children[r*boardSize+c].style.backgroundColor='#ffe4c4';
+      }
+      score+=10;
+    }
+  }
+  // Columns
+  for(let c=0;c<boardSize;c++){
+    let full=true;
+    for(let r=0;r<boardSize;r++){
+      if(board[r][c]===0) full=false;
+    }
+    if(full){
+      for(let r=0;r<boardSize;r++){
+        board[r][c]=0;
+        boardDiv.children[r*boardSize+c].style.backgroundColor='#ffe4c4';
+      }
+      score+=10;
+    }
+  }
+}
+
+// Generate new pieces if none left
+function generatePiecesIfEmpty(){
+  if(piecesDiv.children.length===0){
+    generatePieces();
+  }
+}
+
+// Check if game over
+function checkGameOver(){
+  for(let piece of pieces){
+    for(let r=0;r<boardSize;r++){
+      for(let c=0;c<boardSize;c++){
+        if(canPlace(piece,r,c)) return;
+      }
+    }
+  }
+  messageDisplay.textContent='Game Over! Score: '+score;
+  selectedPiece=null;
+}
+
+// Start new game
+function newGame(){
+  score=0;
+  messageDisplay.textContent='';
+  createBoard();
+  generatePieces();
+}
+
+newGame();
+</script>
+
+</body>
+</html>

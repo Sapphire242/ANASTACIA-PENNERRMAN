@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>PinkCloud 🎧</title>
+
+<style>
+body {
+    margin: 0;
+    background: #fff0f6;
+    font-family: Arial, sans-serif;
+    color: #333;
+}
+
+header {
+    background: linear-gradient(90deg, #ff4fa3, #ff9ad5);
+    padding: 15px;
+    color: white;
+    font-size: 22px;
+    font-weight: bold;
+}
+
+.search {
+    padding: 15px;
+    text-align: center;
+}
+
+.search input {
+    width: 70%;
+    padding: 10px;
+    border-radius: 20px;
+    border: 1px solid #ddd;
+    font-size: 16px;
+}
+
+.track-list {
+    max-width: 900px;
+    margin: auto;
+    padding-bottom: 90px;
+}
+
+.track {
+    display: flex;
+    gap: 15px;
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.artwork {
+    width: 100px;
+    height: 100px;
+    background-size: cover;
+    background-position: center;
+    border-radius: 10px;
+}
+
+.info {
+    flex: 1;
+}
+
+.info h3 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.info p {
+    margin: 4px 0;
+    color: #777;
+}
+
+.waveform {
+    height: 40px;
+    background: #ffd6e8;
+    border-radius: 8px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.progress {
+    height: 100%;
+    background: linear-gradient(to right, #ff1493, #ff69b4);
+    width: 0%;
+}
+
+.play-btn {
+    background: #ff1493;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 45px;
+    height: 45px;
+    font-size: 18px;
+    cursor: pointer;
+}
+
+.player-dock {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    border-top: 1px solid #ddd;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.player-dock img {
+    width: 50px;
+    height: 50px;
+    border-radius: 8px;
+}
+
+.player-info {
+    flex: 1;
+    font-size: 14px;
+}
+
+.player-controls button {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+}
+</style>
+</head>
+<body>
+
+<header>🎧 PinkCloud</header>
+
+<div class="search">
+    <input id="search" placeholder="Search tracks or artists and press Enter">
+</div>
+
+<div class="track-list" id="tracks"></div>
+
+<div class="player-dock" id="dock" style="display:none">
+    <img id="dockArt">
+    <div class="player-info">
+        <div id="dockTitle"></div>
+        <div id="dockArtist"></div>
+    </div>
+    <div class="player-controls">
+        <button onclick="toggle()">⏯</button>
+    </div>
+</div>
+
+<audio id="audio" crossorigin="anonymous"></audio>
+
+<script>
+const audio = document.getElementById("audio");
+const tracksDiv = document.getElementById("tracks");
+const dock = document.getElementById("dock");
+const dockArt = document.getElementById("dockArt");
+const dockTitle = document.getElementById("dockTitle");
+const dockArtist = document.getElementById("dockArtist");
+
+let tracks = [];
+let current = null;
+let audioCtx, source;
+
+// 🔓 Unlock audio (browser policy fix)
+function unlockAudio() {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        source = audioCtx.createMediaElementSource(audio);
+        source.connect(audioCtx.destination);
+    }
+    if (audioCtx.state === "suspended") audioCtx.resume();
+}
+
+// 🔍 Search on Enter
+document.getElementById("search").addEventListener("keydown", e => {
+    if (e.key === "Enter") search(e.target.value);
+});
+
+async function search(q) {
+    tracksDiv.innerHTML = "Loading...";
+    const res = await fetch(
+        "https://itunes.apple.com/search?entity=song&limit=15&term=" +
+        encodeURIComponent(q)
+    );
+    const data = await res.json();
+    tracks = data.results.filter(t => t.previewUrl);
+    render();
+}
+
+// 🎨 Render track feed
+function render() {
+    tracksDiv.innerHTML = "";
+    tracks.forEach((t, i) => {
+        const div = document.createElement("div");
+        div.className = "track";
+        div.innerHTML = `
+            <div class="artwork" style="background-image:url(${t.artworkUrl100.replace("100x100","300x300")})"></div>
+            <button class="play-btn">▶</button>
+            <div class="info">
+                <h3>${t.trackName}</h3>
+                <p>${t.artistName}</p>
+                <div class="waveform">
+                    <div class="progress"></div>
+                </div>
+            </div>
+        `;
+        div.querySelector(".play-btn").onclick = () => playTrack(i);
+        div.querySelector(".waveform").onclick = e => seek(e, div);
+        tracksDiv.appendChild(div);
+    });
+}
+
+// ▶️ Play track
+function playTrack(i) {
+    unlockAudio();
+    current = i;
+    audio.src = tracks[i].previewUrl;
+    audio.play();
+
+    dock.style.display = "flex";
+    dockArt.src = tracks[i].artworkUrl100;
+    dockTitle.textContent = tracks[i].trackName;
+    dockArtist.textContent = tracks[i].artistName;
+}
+
+// ⏯ Toggle play
+function toggle() {
+    unlockAudio();
+    audio.paused ? audio.play() : audio.pause();
+}
+
+// 🌊 Waveform seek
+function seek(e, trackDiv) {
+    if (!audio.duration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const pct = (e.clientX - rect.left) / rect.width;
+    audio.currentTime = audio.duration * pct;
+}
+
+// ⏱ Update progress bar
+audio.addEventListener("timeupdate", () => {
+    if (current === null) return;
+    const trackDiv = tracksDiv.children[current];
+    const progress = trackDiv.querySelector(".progress");
+    progress.style.width =
+        (audio.currentTime / audio.duration * 100) + "%";
+});
+</script>
+
+</body>
+</html>
