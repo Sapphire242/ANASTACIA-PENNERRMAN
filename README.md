@@ -153,7 +153,6 @@ Timer mode or turn limit
 Custom themes and emojis
 Sound effects for moves and wins
 
-5. 
 
 
 
