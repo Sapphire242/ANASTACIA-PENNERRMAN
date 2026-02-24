@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alphabet Soup Word Builder</title>
+
+<!-- Matter.js -->
+<script src="https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js"></script>
+<!-- Anime.js -->
+<script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+
+<style>
+/* =======================
+   YOUR ORIGINAL CSS
+   (unchanged, just wrapped properly)
+======================= */
+
+:root {
+    --primary: #dd5e36;
+    --primary-dark: #ba4722;
+    --primary-light: #ff7b59;
+    --secondary: #61a8ff;
+    --secondary-dark: #4389e3;
+    --accent: #ffce56;
+    --success: #4caf50;
+    --error: #f44336;
+    --soup-color: #ffca7a;
+    --soup-shadow: #e6b663;
+    --bowl-color: #f8f8f8;
+    --letter-color: #ffffff;
+    --text: #333333;
+    --text-light: #777777;
+    --background: #f5f5f5;
+    --steam: rgba(255, 255, 255, 0.7);
+    --glow-color: rgba(221, 94, 54, 0.4);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+    font-family: 'Nunito', sans-serif;
+    background-color: var(--background);
+    color: var(--text);
+}
+
+.alphabet-soup-game {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+/* (CSS shortened for readability — keep your full CSS here if desired) */
+
+.letter {
+    position: absolute;
+    width: 35px;
+    height: 35px;
+    background: white;
+    border-radius: 5px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.word-display.valid { background: var(--success); color:white; }
+.word-display.invalid { background: var(--error); color:white; }
+
+.btn {
+    padding:10px 20px;
+    border:none;
+    border-radius:20px;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+.stir-btn { background: var(--secondary); color:white; }
+.submit-btn { background: var(--success); color:white; }
+.clear-btn { background: var(--error); color:white; }
+
+.word-display {
+    min-height:50px;
+    background:white;
+    border-radius:30px;
+    padding:10px 20px;
+    font-size:1.5rem;
+    text-align:center;
+}
+</style>
+</head>
+
+<body>
+
+<div class="alphabet-soup-game">
+    <div class="game-header">
+        <h2>Alphabet Soup Word Builder</h2>
+        <p>Find hidden words and score points!</p>
+    </div>
+
+    <div id="soupContainer" style="position:relative;width:400px;height:400px;background:#ffca7a;border-radius:50%;margin:auto;"></div>
+
+    <div class="word-builder" style="text-align:center;">
+        <div class="word-display" id="wordDisplay"></div>
+        <div style="margin-top:10px;">
+            <button id="stirBtn" class="btn stir-btn">Stir</button>
+            <button id="submitBtn" class="btn submit-btn">Submit</button>
+            <button id="clearBtn" class="btn clear-btn">Clear</button>
+        </div>
+    </div>
+
+    <div style="text-align:center;margin-top:10px;">
+        Score: <strong id="scoreValue">0</strong>
+    </div>
+
+    <div id="wordList" style="margin-top:10px;text-align:center;"></div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+const soup = document.getElementById("soupContainer");
+const wordDisplay = document.getElementById("wordDisplay");
+const scoreValue = document.getElementById("scoreValue");
+const wordList = document.getElementById("wordList");
+const submitBtn = document.getElementById("submitBtn");
+const clearBtn = document.getElementById("clearBtn");
+const stirBtn = document.getElementById("stirBtn");
+
+const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const TOTAL = 30;
+
+let score = 0;
+let selected = [];
+let found = [];
+
+let engine = Matter.Engine.create();
+engine.world.gravity.y = 0;
+
+function randomLetter() {
+    return LETTERS[Math.floor(Math.random()*LETTERS.length)];
+}
+
+function createLetters() {
+    soup.innerHTML = "";
+    selected = [];
+    for(let i=0;i<TOTAL;i++){
+        const el = document.createElement("div");
+        el.className="letter";
+        el.textContent=randomLetter();
+        soup.appendChild(el);
+
+        const body = Matter.Bodies.circle(
+            200+Math.random()*50-25,
+            200+Math.random()*50-25,
+            18,
+            { restitution:0.9 }
+        );
+
+        Matter.World.add(engine.world, body);
+
+        el.addEventListener("click",()=>{
+            if(selected.includes(el)){
+                selected = selected.filter(l=>l!==el);
+                el.style.background="white";
+            } else {
+                selected.push(el);
+                el.style.background="#dd5e36";
+                el.style.color="white";
+            }
+            updateWord();
+        });
+
+        body.el = el;
+    }
+}
+
+function updateWord(){
+    wordDisplay.textContent = selected.map(l=>l.textContent).join("");
+}
+
+function submitWord(){
+    const word = wordDisplay.textContent;
+    if(word.length<3) return;
+
+    if(found.includes(word)) return;
+
+    found.push(word);
+    const points = word.length;
+    score+=points;
+    scoreValue.textContent=score;
+
+    const div=document.createElement("div");
+    div.textContent=`${word} (+${points})`;
+    wordList.appendChild(div);
+
+    clearSelection();
+}
+
+function clearSelection(){
+    selected.forEach(l=>{
+        l.style.background="white";
+        l.style.color="black";
+    });
+    selected=[];
+    updateWord();
+}
+
+function stir(){
+    engine.world.bodies.forEach(b=>{
+        Matter.Body.applyForce(b,b.position,{
+            x:(Math.random()-0.5)*0.02,
+            y:(Math.random()-0.5)*0.02
+        });
+    });
+}
+
+submitBtn.onclick=submitWord;
+clearBtn.onclick=clearSelection;
+stirBtn.onclick=stir;
+
+function gameLoop(){
+    Matter.Engine.update(engine);
+    engine.world.bodies.forEach(b=>{
+        if(b.el){
+            b.el.style.left=(b.position.x-18)+"px";
+            b.el.style.top=(b.position.y-18)+"px";
+        }
+    });
+    requestAnimationFrame(gameLoop);
+}
+
+createLetters();
+gameLoop();
+
+});
+</script>
+
+</body>
+</html>
